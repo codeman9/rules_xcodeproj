@@ -8,6 +8,15 @@
 # file and exit.
 #
 # Preview invocations (-###, thunk linking, etc.): pass through to real clang.
+#
+# Debug dylib builds (ENABLE_DEBUG_DYLIB=YES): Xcode 16+ creates three link
+# tasks for executable targets that support previews:
+#   1. *.debug.dylib   — dylib containing compiled code
+#   2. *__preview.dylib — empty interposition dylib
+#   3. stub executor   — small binary that loads the debug dylib
+# We pass through for (1) and (2) so real clang creates valid Mach-O files.
+# For (3), the stub executor link writes dummy dep_info as usual since Bazel's
+# real binary is already staged via output groups.
 
 set -euo pipefail
 
@@ -38,7 +47,10 @@ passthrough=0
 dep_info_file=""
 for arg in "$@"; do
   case "$arg" in
-  -\#\#\#|-v|--version|-version_details|*.preview-thunk.dylib)
+  -\#\#\#|-v|--version|-version_details)
+    passthrough=1
+    ;;
+  *.preview-thunk.dylib|*.debug.dylib|*__preview.dylib)
     passthrough=1
     ;;
   *_dependency_info.dat)

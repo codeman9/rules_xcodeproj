@@ -87,7 +87,8 @@ extension Generator {
             .init(key: "CXX", value: #""$(BAZEL_INTEGRATION_DIR)/clang.sh""#),
             .init(key: "DEBUG_INFORMATION_FORMAT", value: "dwarf"),
             .init(key: "DSTROOT", value: #""$(PROJECT_TEMP_DIR)""#),
-            .init(key: "ENABLE_DEBUG_DYLIB", value: "NO"),
+            // Required for Xcode 16+ Previews in executable targets
+            .init(key: "ENABLE_DEBUG_DYLIB", value: "YES"),
             .init(key: "ENABLE_DEFAULT_SEARCH_PATHS", value: "NO"),
             .init(key: "ENABLE_STRICT_OBJC_MSGSEND", value: "YES"),
             .init(key: "ENABLE_USER_SCRIPT_SANDBOXING", value: "NO"),

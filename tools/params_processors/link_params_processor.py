@@ -66,6 +66,14 @@ def _quote_if_needed(opt: str) -> str:
     return opt
 
 
+def _normalize_path(opt: str) -> str:
+    """Replace relative bazel-out/ paths and Bazel placeholder paths."""
+    opt = opt.replace("bazel-out/", "$(BAZEL_OUT)/")
+    opt = opt.replace("__BAZEL_XCODE_DEVELOPER_DIR__", "$(DEVELOPER_DIR)")
+    opt = opt.replace("__BAZEL_XCODE_SDKROOT__", "$(SDKROOT)")
+    return opt
+
+
 def _process_linkopts(
         linkopts: List[str],
         is_framework: bool,
@@ -76,7 +84,7 @@ def _process_linkopts(
             paths = fp.read().splitlines()
 
         return [
-            _quote_if_needed(path)
+            _quote_if_needed(_normalize_path(path))
             for path in paths
             if not path in generated_product_paths and not path.endswith(".o")
         ]
@@ -101,7 +109,7 @@ def _process_linkopts(
             if opt in _XLINKER_SKIP_FLAGS or opt.isdigit():
                 return
             _quote_and_append_processed_linkopt("-Xlinker")
-            _quote_and_append_processed_linkopt(opt)
+            _quote_and_append_processed_linkopt(_normalize_path(opt))
             return
         if opt == "-Xlinker":
             return
@@ -154,13 +162,7 @@ def _process_linkopts(
         if opt == "-lc++":
             return
 
-        # Use Xcode set `DEVELOPER_DIR`
-        opt = opt.replace("__BAZEL_XCODE_DEVELOPER_DIR__", "$(DEVELOPER_DIR)")
-
-        # Use Xcode set `SDKROOT`
-        opt = opt.replace("__BAZEL_XCODE_SDKROOT__", "$(SDKROOT)")
-
-        opt = opt.replace("bazel-out/", "$(BAZEL_OUT)/")
+        opt = _normalize_path(opt)
 
         _quote_and_append_processed_linkopt(opt)
 
