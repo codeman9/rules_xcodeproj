@@ -212,17 +212,9 @@ extension Generator.ProcessSwiftArgs {
         }
 
         if !previewsIncludePath.isEmpty {
-            buildSettings.append(("PREVIEWS_SWIFT_INCLUDE__", #""""#))
-            buildSettings.append(("PREVIEWS_SWIFT_INCLUDE__NO", #""""#))
-            buildSettings.append(
-                (
-                    "PREVIEWS_SWIFT_INCLUDE__YES",
-                    "-I\(Substring(previewsIncludePath).buildSettingPath())"
-                        .pbxProjEscaped
-                )
+            args.append(
+                "-I\(Substring(previewsIncludePath).buildSettingPath())"
             )
-
-            args.append("$(PREVIEWS_SWIFT_INCLUDE__$(ENABLE_PREVIEWS))")
         }
 
         var hasDebugInfo = false
@@ -332,9 +324,6 @@ extension Generator.ProcessSwiftArgs {
             ("OTHER_SWIFT_FLAGS", args.joined(separator: " ").pbxProjEscaped)
         )
 
-        // Work around https://github.com/MobileNativeFoundation/rules_xcodeproj/issues/3171
-        buildSettings.append(("SWIFT_ENABLE_EMIT_CONST_VALUES", "NO"))
-
         return (
             hasDebugInfo,
             clangArgs,
@@ -351,6 +340,8 @@ private let skipSwiftArgs: [Substring: Int] = [
     "-emit-module-path": 2,
     "-emit-object": 1,
     "-output-file-map": 2,
+
+    "-emit-const-values-path": 2,
 
     // Xcode sets these, and no way to unset them
     "-enable-bare-slash-regex": 1,

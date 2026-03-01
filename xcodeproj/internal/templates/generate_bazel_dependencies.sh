@@ -12,14 +12,8 @@ if [ "$ACTION" == "indexbuild" ]; then
 "https://github.com/MobileNativeFoundation/rules_xcodeproj/issues/new?template=bug.md"
   exit 1
 else
-  if [[ "${ENABLE_PREVIEWS:-}" == "YES" ]]; then
-    # Compile params, products (i.e. bundles) and index store data, and link
-    # params
-    readonly output_group_prefixes="bc,bp,bl"
-  else
-    # Products (i.e. bundles) and index store data
-    readonly output_group_prefixes="bp"
-  fi
+  # Compile params, products, index store data, and link params
+  readonly output_group_prefixes="bc,bp,bl"
 
   # In Xcode 14 the "Index" directory was renamed to "Index.noindex".
   # `$INDEX_DATA_STORE_DIR` is set to `$OBJROOT/INDEX_DIR/DataStore`, so we can
@@ -119,8 +113,6 @@ if [ "$ACTION" == "indexbuild" ]; then
 
   # Index Build doesn't need sanitizers
   apply_sanitizers=0
-elif [ "${ENABLE_PREVIEWS:-}" == "YES" ]; then
-  readonly config="${BAZEL_CONFIG}_swiftuipreviews"
 elif [ "${CLANG_COVERAGE_MAPPING:-}" == YES ]; then
   # Code coverage build
   #

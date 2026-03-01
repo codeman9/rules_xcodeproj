@@ -26,7 +26,22 @@ _LD_SKIP_OPTS = {
     # This is wrapped_clang specific, and we don't want to translate it for BwX
     "-Wl,-oso_prefix,__BAZEL_EXECUTION_ROOT__/": 1,
     "OSO_PREFIX_MAP_PWD": 1,
+
+    "-ObjC": 1,
+    "-headerpad_max_install_names": 1,
+    "-no-canonical-prefixes": 1,
+    "-objc_abi_version": 1,
 }
+
+_XLINKER_SKIP_FLAGS = {
+    "-objc_abi_version",
+    "-no_deduplicate",
+}
+
+_WL_SKIP_PREFIXES = (
+    "-Wl,-objc_abi_version,",
+    "-Wl,-no_warn_duplicate_libraries",
+)
 
 
 def _parse_args(args_files: List[str]) -> List[str]:
@@ -80,6 +95,17 @@ def _process_linkopts(
             processed_linkopts.extend(_process_filelist(opt))
             return
 
+        # Handle -Xlinker pairs: skip specific ld64 flags, and skip bare
+        # numeric values (orphaned from previously-skipped flags)
+        if last_opt == "-Xlinker":
+            if opt in _XLINKER_SKIP_FLAGS or opt.isdigit():
+                return
+            _quote_and_append_processed_linkopt("-Xlinker")
+            _quote_and_append_processed_linkopt(opt)
+            return
+        if opt == "-Xlinker":
+            return
+
         opt_generated_path_matches = [
             path
             for path in generated_product_paths
@@ -113,11 +139,28 @@ def _process_linkopts(
             opt.startswith("DSYM_HINT_LINKED_BINARY=")):
             return
 
+        for prefix in _WL_SKIP_PREFIXES:
+            if opt.startswith(prefix):
+                return
+
+        # Convert -Wl, flags to -Xlinker pairs
+        if opt.startswith("-Wl,"):
+            parts = opt[4:].split(",")
+            for part in parts:
+                _quote_and_append_processed_linkopt("-Xlinker")
+                _quote_and_append_processed_linkopt(part)
+            return
+
+        if opt == "-lc++":
+            return
+
         # Use Xcode set `DEVELOPER_DIR`
         opt = opt.replace("__BAZEL_XCODE_DEVELOPER_DIR__", "$(DEVELOPER_DIR)")
 
         # Use Xcode set `SDKROOT`
         opt = opt.replace("__BAZEL_XCODE_SDKROOT__", "$(SDKROOT)")
+
+        opt = opt.replace("bazel-out/", "$(BAZEL_OUT)/")
 
         _quote_and_append_processed_linkopt(opt)
 

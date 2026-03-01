@@ -109,6 +109,43 @@ func touchDepsFiles(isWMO: Bool, paths: [PathKey: URL]) throws {
     }
 }
 
+/// Touch output files listed in the OutputFileMap for the integrated Swift
+/// driver and Xcode Preview system.
+func touchOutputFileMapOutputs(isWMO: Bool, paths: [PathKey: URL]) throws {
+    guard let outputFileMapPath = paths[PathKey.outputFileMap] else { return }
+    guard !isWMO else { return }
+
+    let data = try Data(contentsOf: outputFileMapPath)
+    let outputFileMapRaw = try JSONSerialization.jsonObject(
+        with: data,
+        options: []
+    )
+    guard let outputFileMap = outputFileMapRaw as? [String: [String: Any]]
+    else {
+        return
+    }
+
+    let keysToTouch = ["object", "swiftmodule", "swift-dependencies",
+                       "diagnostics"]
+    for (sourceFile, entry) in outputFileMap {
+        // Skip the global ("") entry
+        guard !sourceFile.isEmpty else { continue }
+        for key in keysToTouch {
+            guard let path = entry[key] as? String else { continue }
+            var url = URL(fileURLWithPath: path)
+            try url.touch()
+        }
+
+        if let constValuesPath = entry["const-values"] as? String {
+            let url = URL(fileURLWithPath: constValuesPath)
+            let fileManager = FileManager.default
+            if !fileManager.fileExists(atPath: url.path) {
+                try Data("[]".utf8).write(to: url)
+            }
+        }
+    }
+}
+
 /// Touch the Xcode-required `.swift{module,doc,sourceinfo}` files
 func touchSwiftmoduleArtifacts(paths: [PathKey: URL]) throws {
     if var swiftmodulePath = paths[PathKey.emitModulePath] {
@@ -218,3 +255,4 @@ guard !isPreviewThunk else {
 
 try touchDepsFiles(isWMO: isWMO, paths: paths)
 try touchSwiftmoduleArtifacts(paths: paths)
+try touchOutputFileMapOutputs(isWMO: isWMO, paths: paths)

@@ -68,6 +68,12 @@ common:rules_xcodeproj --spawn_strategy=remote,worker,local
 # Needed to download aspect output groups
 build:rules_xcodeproj --remote_download_outputs=toplevel
 
+# SwiftUI Previews support
+common:rules_xcodeproj --%swiftcopt%=-Xfrontend --%swiftcopt%=-enable-implicit-dynamic
+common:rules_xcodeproj --%swiftcopt%=-Xfrontend --%swiftcopt%=-enable-private-imports
+common:rules_xcodeproj --%swiftcopt%=-Xfrontend --%swiftcopt%=-enable-dynamic-replacement-chaining
+common:rules_xcodeproj --linkopt="-Wl,-rpath,@loader_path/SwiftUIPreviewsFrameworks"
+
 ### `--config=rules_xcodeproj_generator`
 #
 # Used when generating a project.

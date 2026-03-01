@@ -49,6 +49,9 @@ if [[ "$ACTION" != indexbuild ]]; then
         "$BAZEL_OUTPUTS_PRODUCT_BASENAME" \
         "$TARGET_BUILD_DIR"
 
+      # Workaround: macOS openrsync may not apply --chmod=u+w correctly
+      chmod -R u+w "$TARGET_BUILD_DIR/$BAZEL_OUTPUTS_PRODUCT_BASENAME" 2>/dev/null || true
+
       if [[ -n "${TEST_HOST:-}" ]]; then
         # We need to re-sign test frameworks that Xcode placed into the test
         # host un-signed
@@ -84,12 +87,8 @@ if [[ "$ACTION" != indexbuild ]]; then
         find "$plugins_dir" -depth 2 -name "Info.plist" -exec touch {} \;
       fi
 
-      # Xcode Previews has a hard time finding frameworks (`@rpath`) when using
-      # framework schemes, so let's symlink them into
-      # `$TARGET_BUILD_DIR` (since we modify `@rpath` to always include
-      # `@loader_path/SwiftUIPreviewsFrameworks`)
-      if [[ "${ENABLE_PREVIEWS:-}" == "YES" && \
-            -n "${PREVIEW_FRAMEWORK_PATHS:-}" ]]; then
+      # Symlink preview framework dependencies for @rpath resolution
+      if [[ -n "${PREVIEW_FRAMEWORK_PATHS:-}" ]]; then
         mkdir -p "$TARGET_BUILD_DIR/$WRAPPER_NAME/SwiftUIPreviewsFrameworks"
         cd "$TARGET_BUILD_DIR/$WRAPPER_NAME/SwiftUIPreviewsFrameworks"
 

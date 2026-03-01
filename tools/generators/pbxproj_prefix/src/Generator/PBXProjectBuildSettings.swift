@@ -91,11 +91,15 @@ extension Generator {
             .init(key: "ENABLE_DEFAULT_SEARCH_PATHS", value: "NO"),
             .init(key: "ENABLE_STRICT_OBJC_MSGSEND", value: "YES"),
             .init(key: "ENABLE_USER_SCRIPT_SANDBOXING", value: "NO"),
+            // Xcode 16+ XOJIT preview architecture
+            .init(key: "ENABLE_XOJIT_PREVIEWS", value: "YES"),
             .init(key: "GCC_OPTIMIZATION_LEVEL", value: "0"),
-            .init(key: "LD", value: #""$(BAZEL_INTEGRATION_DIR)/ld""#),
+            // Named "clang.ld" so the Xcode Preview system recognizes it as
+            // a clang-compatible driver rather than ld64 (Xcode 16+)
+            .init(key: "LD", value: #""$(BAZEL_INTEGRATION_DIR)/clang.ld""#),
             .init(
                 key: "LDPLUSPLUS",
-                value: #""$(BAZEL_INTEGRATION_DIR)/ld""#
+                value: #""$(BAZEL_INTEGRATION_DIR)/clang.ld""#
             ),
             .init(
                 key: "LIBTOOL",
@@ -159,7 +163,8 @@ extension Generator {
             ),
             .init(key: "SWIFT_OBJC_INTERFACE_HEADER_NAME", value: #""""#),
             .init(key: "SWIFT_OPTIMIZATION_LEVEL", value: #""-Onone""#),
-            .init(key: "SWIFT_USE_INTEGRATED_DRIVER", value: "NO"),
+            // Required for Xcode 16+ Previews
+            .init(key: "SWIFT_USE_INTEGRATED_DRIVER", value: "YES"),
             .init(key: "SWIFT_VERSION", value: "5.0"),
             .init(key: "TAPI_EXEC", value: "/usr/bin/true"),
             .init(

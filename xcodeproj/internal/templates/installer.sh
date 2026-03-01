@@ -141,11 +141,20 @@ chmod u+w "$dest_generated_xcfilelist"
 
 # - Keep only scripts as runnable
 find "$dest/rules_xcodeproj/bazel" \
-  -type f \( -name "*.sh" -o -name "*.py" -o -name "ld" -o -name "libtool" \) \
+  -type f \( -name "*.sh" -o -name "*.py" -o -name "ld" -o -name "clang.ld" -o -name "libtool" \) \
   -print0 | xargs -0 chmod u+x
 find "$dest/rules_xcodeproj/bazel" \
-  -type f ! \( -name "swiftc" -o -name "ld" -o -name "libtool" -o -name "import_indexstores" -o -name "*.sh" -o -name "*.py" \) \
+  -type f ! \( -name "swiftc" -o -name "ld" -o -name "clang.ld" -o -name "libtool" -o -name "import_indexstores" -o -name "*.sh" -o -name "*.py" \) \
   -print0 | xargs -0 chmod -x
+
+# Create a swift-frontend symlink for Xcode Previews (XOJIT).
+# The preview system's LibSwiftDriver resolves swift-frontend relative to the
+# swiftc binary (SWIFT_EXEC). Without this symlink, frontendCommandLine() fails
+# because it can't find swift-frontend in the integration directory.
+readonly xcode_toolchain_bin="$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+if [[ -x "$xcode_toolchain_bin/swift-frontend" ]]; then
+  ln -sf "$xcode_toolchain_bin/swift-frontend" "$dest/rules_xcodeproj/bazel/swift-frontend"
+fi
 
 # Copy over `project.xcworkspace/contents.xcworkspacedata` if needed
 readonly dest_xcworkspacedata="$dest/project.xcworkspace/contents.xcworkspacedata"
