@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Compiler wrapper for rules_xcodeproj Build with Bazel mode.
+# The Xcode Preview system derives this path by stripping the ".ld" suffix
+# from the LD setting (clang.ld -> clang) when analyzing static library
+# targets. It invokes this to discover additional link libraries needed
+# for preview thunk compilation.
+#
+# Regular builds use clang.sh (CC setting) and never invoke this file.
+
+set -euo pipefail
+
+# Extract developer_dir from -isysroot
+developer_dir=""
+prev_arg=""
+for arg in "$@"; do
+  if [[ "$prev_arg" == "-isysroot" ]]; then
+    developer_dir="${arg/\/Platforms\/*/}"
+    break
+  fi
+  prev_arg="$arg"
+done
+
+# Fallback developer_dir
+if [[ -z "$developer_dir" ]]; then
+  developer_dir="${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null)}"
+  developer_dir="${developer_dir%/Toolchains/*}"
+  developer_dir="${developer_dir%/usr/*}"
+fi
+
+real_clang="$developer_dir/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
+exec "$real_clang" "$@"
