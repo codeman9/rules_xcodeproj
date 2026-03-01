@@ -62,6 +62,12 @@ Minimum Xcode version that the generated project supports.
         )
         var importIndexBuildIndexstores: Bool
 
+        @Argument(
+            help: "Whether to enable Xcode 16+ SwiftUI Preview support.",
+            transform: { $0 == "1" }
+        )
+        var enablePreviews: Bool
+
         @Argument(help: "Name of the default Xcode configuration.")
         var defaultXcodeConfiguration: String
 

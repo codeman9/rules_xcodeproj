@@ -34,7 +34,7 @@ def _serialize_nullable_string(value):
         return "None"
     return '"' + value + '"'
 
-def _write_xcodeproj_bazelrc(name, actions, config, template):
+def _write_xcodeproj_bazelrc(name, actions, config, enable_previews, template):
     output = actions.declare_file("{}.bazelrc".format(name))
 
     if config != "rules_xcodeproj":
@@ -67,12 +67,25 @@ common:_{config}_build --config={config}
     else:
         project_configs = ""
 
+    swiftcopt = str(Label("@build_bazel_rules_swift//swift:copt"))
+    if enable_previews:
+        preview_flags = """
+# SwiftUI Previews support
+common:rules_xcodeproj --{swiftcopt}=-Xfrontend --{swiftcopt}=-enable-implicit-dynamic
+common:rules_xcodeproj --{swiftcopt}=-Xfrontend --{swiftcopt}=-enable-private-imports
+common:rules_xcodeproj --{swiftcopt}=-Xfrontend --{swiftcopt}=-enable-dynamic-replacement-chaining
+common:rules_xcodeproj --linkopt="-Wl,-rpath,@loader_path/SwiftUIPreviewsFrameworks"
+""".format(swiftcopt = swiftcopt)
+    else:
+        preview_flags = ""
+
     actions.expand_template(
         template = template,
         output = output,
         substitutions = {
+            "%preview_flags%": preview_flags,
             "%project_configs%": project_configs,
-            "%swiftcopt%": str(Label("@build_bazel_rules_swift//swift:copt")),
+            "%swiftcopt%": swiftcopt,
         },
     )
 
@@ -217,6 +230,7 @@ def _write_generator_build_file(
         substitutions = {
             "%colorize%": str(attr._colorize[BuildSettingInfo].value),
             "%config%": attr.config,
+            "%enable_previews%": str(attr.enable_previews),
             "%default_xcode_configuration%": (
                 _serialize_nullable_string(attr.default_xcode_configuration)
             ),
@@ -389,6 +403,7 @@ def _xcodeproj_runner_impl(ctx):
     xcodeproj_bazelrc = _write_xcodeproj_bazelrc(
         actions = actions,
         config = config,
+        enable_previews = ctx.attr.enable_previews,
         name = name,
         template = ctx.file._bazelrc_template,
     )
@@ -473,6 +488,7 @@ xcodeproj_runner = rule(
         "bazel_path": attr.string(mandatory = True),
         "config": attr.string(mandatory = True),
         "default_xcode_configuration": attr.string(),
+        "enable_previews": attr.bool(mandatory = True),
         "focused_labels": attr.string_list(default = []),
         "generation_shard_count": attr.int(mandatory = True),
         "import_index_build_indexstores": attr.bool(mandatory = True),

@@ -9,6 +9,8 @@ extension Generator {
     ///   - config: The value to be used for the `BAZEL_CONFIG` build setting.
     ///   - importIndexBuildIndexstores: Whether to import index build
     ///     indexstores.
+    ///   - enablePreviews: Whether to enable Xcode 16+ SwiftUI Preview
+    ///     support.
     ///   - legacyIndexImport: The Bazel execution root relative path to the
     ///     `index_import` (version 5.8) executable.
     ///   - indexImport: The Bazel execution root relative path to the
@@ -22,6 +24,7 @@ extension Generator {
     static func pbxProjectBuildSettings(
         config: String,
         importIndexBuildIndexstores: Bool,
+        enablePreviews: Bool,
         legacyIndexImport: String,
         indexImport: String,
         indexingProjectDir: String,
@@ -87,13 +90,13 @@ extension Generator {
             .init(key: "CXX", value: #""$(BAZEL_INTEGRATION_DIR)/clang.sh""#),
             .init(key: "DEBUG_INFORMATION_FORMAT", value: "dwarf"),
             .init(key: "DSTROOT", value: #""$(PROJECT_TEMP_DIR)""#),
-            // Required for Xcode 16+ Previews in executable targets
-            .init(key: "ENABLE_DEBUG_DYLIB", value: "YES"),
+            .init(
+                key: "ENABLE_DEBUG_DYLIB",
+                value: enablePreviews ? "YES" : "NO"
+            ),
             .init(key: "ENABLE_DEFAULT_SEARCH_PATHS", value: "NO"),
             .init(key: "ENABLE_STRICT_OBJC_MSGSEND", value: "YES"),
             .init(key: "ENABLE_USER_SCRIPT_SANDBOXING", value: "NO"),
-            // Xcode 16+ XOJIT preview architecture
-            .init(key: "ENABLE_XOJIT_PREVIEWS", value: "YES"),
             .init(key: "GCC_OPTIMIZATION_LEVEL", value: "0"),
             // Named "clang.ld" so the Xcode Preview system recognizes it as
             // a clang-compatible driver rather than ld64 (Xcode 16+)
@@ -156,6 +159,10 @@ extension Generator {
                 value: resolvedRepositories.pbxProjEscaped
             ),
             .init(key: "RULES_XCODEPROJ_BUILD_MODE", value: "bazel"),
+            .init(
+                key: "RULES_XCODEPROJ_ENABLE_PREVIEWS",
+                value: enablePreviews ? "YES" : "NO"
+            ),
             .init(key: "SRCROOT", value: workspace.pbxProjEscaped),
             .init(key: "SUPPORTS_MACCATALYST", value: "NO"),
             .init(
@@ -164,8 +171,10 @@ extension Generator {
             ),
             .init(key: "SWIFT_OBJC_INTERFACE_HEADER_NAME", value: #""""#),
             .init(key: "SWIFT_OPTIMIZATION_LEVEL", value: #""-Onone""#),
-            // Required for Xcode 16+ Previews
-            .init(key: "SWIFT_USE_INTEGRATED_DRIVER", value: "YES"),
+            .init(
+                key: "SWIFT_USE_INTEGRATED_DRIVER",
+                value: enablePreviews ? "YES" : "NO"
+            ),
             .init(key: "SWIFT_VERSION", value: "5.0"),
             .init(key: "TAPI_EXEC", value: "/usr/bin/true"),
             .init(
@@ -181,6 +190,11 @@ extension Generator {
                 value: #""$(PROJECT_DIR)/../..""#
             ),
         ]
+        if enablePreviews {
+            buildSettings.append(
+                .init(key: "ENABLE_XOJIT_PREVIEWS", value: "YES")
+            )
+        }
         if separateIndexBuildOutputBase {
             buildSettings.append(contentsOf: [
                 .init(

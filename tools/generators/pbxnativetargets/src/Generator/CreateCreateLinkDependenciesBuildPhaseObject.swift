@@ -46,7 +46,11 @@ perl -pe 's/\$(\()?([a-zA-Z_]\w*)(?(1)\))/$ENV{$2}/g' \
             #"""
 set -euo pipefail
 
+if [[ "${RULES_XCODEPROJ_ENABLE_PREVIEWS:-}" == "YES" ]]; then
 \#(action)
+else
+touch "$SCRIPT_OUTPUT_FILE_0"
+fi
 
 """#,
         ]

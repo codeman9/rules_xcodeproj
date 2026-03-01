@@ -12,8 +12,13 @@ if [ "$ACTION" == "indexbuild" ]; then
 "https://github.com/MobileNativeFoundation/rules_xcodeproj/issues/new?template=bug.md"
   exit 1
 else
-  # Compile params, products, index store data, and link params
-  readonly output_group_prefixes="bc,bp,bl"
+  # Products are always needed; compile params and link params are only needed
+  # for previews
+  if [[ "${RULES_XCODEPROJ_ENABLE_PREVIEWS:-}" == "YES" ]]; then
+    readonly output_group_prefixes="bc,bp,bl"
+  else
+    readonly output_group_prefixes="bp"
+  fi
 
   # In Xcode 14 the "Index" directory was renamed to "Index.noindex".
   # `$INDEX_DATA_STORE_DIR` is set to `$OBJROOT/INDEX_DIR/DataStore`, so we can

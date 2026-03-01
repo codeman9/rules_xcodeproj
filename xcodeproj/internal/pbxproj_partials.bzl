@@ -659,6 +659,7 @@ def _write_pbxproj_prefix(
         colorize,
         config,
         default_xcode_configuration,
+        enable_previews,
         execution_root_file,
         generator_name,
         import_index_build_indexstores,
@@ -685,6 +686,7 @@ def _write_pbxproj_prefix(
         config: The name of the `.bazelrc` config.
         default_xcode_configuration: The name of the the Xcode configuration to
             use when building, if not overridden by custom schemes.
+        enable_previews: Whether to enable Xcode 16+ SwiftUI Preview support.
         execution_root_file: A `File` containing the absolute path to the Bazel
             execution root.
         generator_name: The name of the `xcodeproj` generator target.
@@ -757,6 +759,9 @@ def _write_pbxproj_prefix(
 
     # importIndexBuildIndexstores
     args.add("1" if import_index_build_indexstores else "0")
+
+    # enablePreviews
+    args.add(TRUE_ARG if enable_previews else FALSE_ARG)
 
     # defaultXcodeConfiguration
     args.add(default_xcode_configuration)

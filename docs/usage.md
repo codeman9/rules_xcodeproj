@@ -114,11 +114,12 @@ build:rules_xcodeproj_indexbuild --profile=
 
 ### `rules_xcodeproj_swiftuipreviews`
 
-The `rules_xcodeproj_swiftuipreviews` config is used when Xcode performs a
-SwiftUI Preview build.
-
-You shouldn’t need to adjust this config. The default config applies the needed
-build adjusting flags.
+> [!NOTE]
+> As of the Xcode 16+ XOJIT preview support, the flags previously applied by
+> this config are now set unconditionally in the base `rules_xcodeproj` config.
+> This config is no longer used by the build system and can be removed from your
+> `.bazelrc` if present. See the [SwiftUI Previews documentation](previews.md)
+> for details.
 
 ### `rules_xcodeproj_coverage`
 

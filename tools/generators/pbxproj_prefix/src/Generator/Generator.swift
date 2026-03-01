@@ -51,6 +51,7 @@ struct Generator {
                 /*config:*/ arguments.config,
                 /*importIndexBuildIndexstores:*/ arguments
                     .importIndexBuildIndexstores,
+                /*enablePreviews:*/ arguments.enablePreviews,
                 /*legacyIndexImport:*/ arguments.legacyIndexImport,
                 /*indexImport:*/ arguments.indexImport,
                 /*indexingProjectDir:*/ environment.indexingProjectDir(
