@@ -48,6 +48,7 @@ def _write_pbxproj_prefix_test_impl(ctx):
         colorize = ctx.attr.colorize,
         config = ctx.attr.config,
         default_xcode_configuration = ctx.attr.default_xcode_configuration,
+        enable_previews = ctx.attr.enable_previews,
         execution_root_file = ctx.attr.execution_root_file,
         generator_name = "a_generator_name",
         import_index_build_indexstores = (
@@ -144,6 +145,7 @@ write_pbxproj_prefix_test = unittest.make(
         "colorize": attr.bool(mandatory = True),
         "config": attr.string(mandatory = True),
         "default_xcode_configuration": attr.string(mandatory = True),
+        "enable_previews": attr.bool(mandatory = True),
         "execution_root_file": attr.string(mandatory = True),
         "import_index_build_indexstores": attr.bool(mandatory = True),
         "index_import": attr.string(mandatory = True),
@@ -182,6 +184,7 @@ def write_pbxproj_prefix_test_suite(name):
             colorize = False,
             config,
             default_xcode_configuration,
+            enable_previews = False,
             execution_root_file,
             import_index_build_indexstores,
             index_import,
@@ -208,6 +211,7 @@ def write_pbxproj_prefix_test_suite(name):
             colorize = colorize,
             config = config,
             default_xcode_configuration = default_xcode_configuration,
+            enable_previews = enable_previews,
             execution_root_file = execution_root_file,
             import_index_build_indexstores = import_index_build_indexstores,
             index_import = index_import,
@@ -283,6 +287,8 @@ def write_pbxproj_prefix_test_suite(name):
             "14.2.1",
             # importIndexBuildIndexstores
             "1",
+            # enablePreviews
+            "0",
             # defaultXcodeConfiguration
             "Debug",
             # developmentRegion
@@ -354,6 +360,8 @@ def write_pbxproj_prefix_test_suite(name):
             # minimumXcodeVersion
             "14.2.1",
             # importIndexBuildIndexstores
+            "0",
+            # enablePreviews
             "0",
             # defaultXcodeConfiguration
             "Release",
