@@ -81,6 +81,16 @@ so real Mach-O files are created.
   toolchain (`XcodeDefault.xctoolchain`). Custom toolchains are not yet
   supported.
 
+## First Build Requirement
+
+After generating (or regenerating) the Xcode project, you must do one full build
+(**Cmd-B**) before previews will work. The preview canvas may show an error about
+a missing `debug.dylib` or similar if you try to preview before building.
+
+This is only needed once after project generation. Subsequent **Clean Build
+Folder** operations do not require a manual rebuild — the preview canvas will
+trigger a build that completes quickly because Bazel's cache is still warm.
+
 ## Troubleshooting
 
 ### `CouldNotParseLinkCommandLine: Could not parse linker command line`
