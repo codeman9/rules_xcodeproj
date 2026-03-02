@@ -156,7 +156,7 @@ def _process_linkopts(
             parts = opt[4:].split(",")
             for part in parts:
                 _quote_and_append_processed_linkopt("-Xlinker")
-                _quote_and_append_processed_linkopt(part)
+                _quote_and_append_processed_linkopt(_normalize_path(part))
             return
 
         if opt == "-lc++":

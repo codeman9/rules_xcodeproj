@@ -141,10 +141,10 @@ chmod u+w "$dest_generated_xcfilelist"
 
 # - Keep only scripts as runnable
 find "$dest/rules_xcodeproj/bazel" \
-  -type f \( -name "*.sh" -o -name "*.py" -o -name "ld" -o -name "clang" -o -name "clang.ld" -o -name "libtool" \) \
+  -type f \( -name "*.sh" -o -name "*.py" -o -name "clang" -o -name "clang.ld" -o -name "libtool" \) \
   -print0 | xargs -0 chmod u+x
 find "$dest/rules_xcodeproj/bazel" \
-  -type f ! \( -name "swiftc" -o -name "ld" -o -name "clang" -o -name "clang.ld" -o -name "libtool" -o -name "import_indexstores" -o -name "*.sh" -o -name "*.py" \) \
+  -type f ! \( -name "swiftc" -o -name "clang" -o -name "clang.ld" -o -name "libtool" -o -name "import_indexstores" -o -name "*.sh" -o -name "*.py" \) \
   -print0 | xargs -0 chmod -x
 
 # Create a swift-frontend symlink for Xcode Previews (XOJIT).

@@ -255,4 +255,7 @@ guard !isPreviewThunk else {
 
 try touchDepsFiles(isWMO: isWMO, paths: paths)
 try touchSwiftmoduleArtifacts(paths: paths)
-try touchOutputFileMapOutputs(isWMO: isWMO, paths: paths)
+
+if ProcessInfo.processInfo.environment["RULES_XCODEPROJ_ENABLE_PREVIEWS"] == "YES" {
+    try touchOutputFileMapOutputs(isWMO: isWMO, paths: paths)
+}

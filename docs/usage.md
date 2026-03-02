@@ -116,10 +116,10 @@ build:rules_xcodeproj_indexbuild --profile=
 
 > [!NOTE]
 > As of the Xcode 16+ XOJIT preview support, the flags previously applied by
-> this config are now set unconditionally in the base `rules_xcodeproj` config.
-> This config is no longer used by the build system and can be removed from your
-> `.bazelrc` if present. See the [SwiftUI Previews documentation](previews.md)
-> for details.
+> this config are now set in the base `rules_xcodeproj` config when
+> `enable_previews = True`. This config is no longer used by the build system
+> and can be removed from your `.bazelrc` if present. See the
+> [SwiftUI Previews documentation](previews.md) for details.
 
 ### `rules_xcodeproj_coverage`
 

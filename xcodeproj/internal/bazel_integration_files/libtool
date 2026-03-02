@@ -1,10 +1,35 @@
 #!/bin/bash
 
 # libtool wrapper for rules_xcodeproj Build with Bazel mode.
-# Passes through to real libtool so that static library archives (.a files)
-# are created from swiftc_stub's .o files. The Xcode Preview system needs
-# these archives to analyze static library targets for preview thunk linking.
+#
+# When previews are enabled, passes through to real libtool so that static
+# library archives (.a files) are created from swiftc_stub's .o files. The
+# Xcode Preview system needs these archives to analyze static library targets
+# for preview thunk linking.
+#
+# When previews are disabled, writes a dummy dependency_info file and exits
+# (the real .a is built by Bazel, not Xcode).
 
 set -euo pipefail
 
-exec libtool "$@"
+if [[ "${RULES_XCODEPROJ_ENABLE_PREVIEWS:-}" == "YES" ]]; then
+  exec libtool "$@"
+fi
+
+original_args=("$@")
+
+while test $# -gt 0
+do
+  case $1 in
+  -V)
+    # Xcode 15+ needs to know the version of libtool
+    exec libtool "${original_args[@]}"
+    ;;
+  *_dependency_info.dat)
+    printf "\0 \0" > "$1"
+    break
+    ;;
+  esac
+
+  shift
+done
