@@ -129,7 +129,7 @@ extension Generator.CalculateSharedBuildSettings {
             buildSettings.append(
                 .init(
                     key: "CODE_SIGNING_ALLOWED",
-                    value: "YES"
+                    value: #""$(RULES_XCODEPROJ_ENABLE_PREVIEWS)""#
                 )
             )
         } else if productType == .uiTestBundle {

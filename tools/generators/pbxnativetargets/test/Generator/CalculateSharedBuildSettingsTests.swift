@@ -79,7 +79,7 @@ class CalculateSharedBuildSettingsTests: XCTestCase {
         let productType = PBXProductType.framework
 
         let expectedBuildSettings = baseBuildSettings.updating([
-            "CODE_SIGNING_ALLOWED": #""$(ENABLE_PREVIEWS)""#,
+            "CODE_SIGNING_ALLOWED": #""$(RULES_XCODEPROJ_ENABLE_PREVIEWS)""#,
         ])
 
         // Act
