@@ -23,6 +23,35 @@ load(
 )
 load(":processed_targets.bzl", "processed_targets")
 
+def _create_library_link_params(*, actions, label, linker_inputs):
+    """Creates a link params file for a library target's transitive deps.
+
+    This enables SwiftUI Previews for static library targets that depend on
+    external libraries (SPM packages, other static libraries). The preview
+    JIT linker needs these transitive dependencies to resolve symbols at
+    runtime.
+    """
+    all_libs = linker_input_files.get_transitive_static_libraries_for_bwx(
+        linker_inputs,
+    )
+    primary = linker_input_files.get_primary_static_library(linker_inputs)
+    dep_libs = [lib for lib in all_libs if lib != primary]
+
+    if not dep_libs:
+        return None
+
+    lines = []
+    for lib in dep_libs:
+        path = lib.path.replace("bazel-out/", "$(BAZEL_OUT)/")
+        lines.append("-force_load")
+        lines.append("'{}'".format(path))
+
+    link_params = actions.declare_file(
+        "{}.rules_xcodeproj.link.params".format(label.name),
+    )
+    actions.write(link_params, "\n".join(lines) + "\n")
+    return link_params
+
 def _process_library_target(
         *,
         ctx,
@@ -118,6 +147,12 @@ def _process_library_target(
         target = target,
     )
 
+    link_params = _create_library_link_params(
+        actions = actions,
+        label = label,
+        linker_inputs = linker_inputs,
+    )
+
     (
         target_build_settings,
         swift_debug_settings_file,
@@ -164,6 +199,7 @@ def _process_library_target(
         compile_params_files = params_files,
         debug_outputs = debug_outputs,
         id = id,
+        link_params = link_params,
         name = label.name,
         output_group_info = (
             target[OutputGroupInfo] if OutputGroupInfo in target else None
@@ -219,6 +255,7 @@ def _process_library_target(
             inputs = target_inputs.xcode_inputs,
             is_top_level = False,
             label = label,
+            link_params = link_params,
             module_name = module_name,
             module_name_attribute = module_name_attribute,
             outputs = target_outputs,

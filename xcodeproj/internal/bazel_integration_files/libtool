@@ -7,11 +7,98 @@
 # creates real .o files and libtool archives them into a valid .a — needed for
 # the Xcode Preview system to analyze static library targets.
 #
+# If a .deps file exists next to the output (created by the "Create Link
+# Dependencies" build phase), the transitive dependency .a files are merged
+# into the archive so the JIT linker can find all symbols. The merge is done
+# in two ways:
+#   1. `ld -r` creates a __deps_merged.o from dependency archives, appended to
+#      the libtool filelist so the XOJIT pseudodylib includes all symbols.
+#   2. The dependency archives are also appended to the libtool command, so the
+#      output .a contains all objects for non-XOJIT code paths.
+#
 # When .o files are missing or invalid (non-preview builds where swiftc_stub
 # creates placeholders), libtool may fail and we fall back to writing a dummy
 # dependency_info file.
 
 set -euo pipefail
+
+# Pass through version queries to the real libtool (Xcode calls -V at build
+# planning time).
+if [[ "${1:-}" == "-V" ]]; then
+  exec /usr/bin/libtool "$@"
+fi
+
+# Parse -o flag and -filelist to find output path and object files
+output_path=""
+filelist_path=""
+arch=""
+prev_arg=""
+for arg in "$@"; do
+  if [[ "$prev_arg" == "-o" ]]; then
+    output_path="$arg"
+  elif [[ "$prev_arg" == "-filelist" ]]; then
+    filelist_path="$arg"
+  elif [[ "$prev_arg" == "-arch_only" ]]; then
+    arch="$arg"
+  fi
+  prev_arg="$arg"
+done
+
+# Check for transitive dependency archives to merge (preview support)
+extra_libs=()
+if [[ -n "$output_path" ]]; then
+  deps_file="${output_path}.deps"
+  if [[ -f "$deps_file" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" && -f "$line" ]] && extra_libs+=("$line")
+    done < "$deps_file"
+  fi
+fi
+
+# Create a separate deps object file from dependency archives.
+# The XOJIT preview system constructs pseudodylibs from the static linker
+# (libtool) inputs. By creating a __deps_merged.o and appending it to the
+# filelist, the pseudodylib includes all transitive dependency symbols without
+# modifying the target's own .o files (which would cause duplicate symbols and
+# JIT failures when switching between previews).
+if (( ${#extra_libs[@]} > 0 )) && [[ -n "$filelist_path" && -f "$filelist_path" ]]; then
+  deps_dir="$(dirname "$filelist_path")"
+  deps_obj="${deps_dir}/__deps_merged.o"
+  ld_args=(-r -all_load)
+  [[ -n "$arch" ]] && ld_args+=(-arch "$arch")
+
+  # ld requires -platform_version; derive from Xcode build settings.
+  platform="${PLATFORM_NAME:-ios-simulator}"
+  case "$platform" in
+    iphonesimulator) platform="ios-simulator" ;;
+    iphoneos) platform="ios" ;;
+    macosx) platform="macos" ;;
+    appletvos) platform="tvos" ;;
+    appletvsimulator) platform="tvos-simulator" ;;
+    watchos) platform="watchos" ;;
+    watchsimulator) platform="watchos-simulator" ;;
+    xros) platform="visionos" ;;
+    xrsimulator) platform="visionos-simulator" ;;
+  esac
+  min_ver="${LLVM_TARGET_TRIPLE_OS_VERSION:-${IPHONEOS_DEPLOYMENT_TARGET:-16.0}}"
+  sdk_ver="${SDK_VERSION:-${min_ver}}"
+  ld_args+=(-platform_version "$platform" "$min_ver" "$sdk_ver")
+
+  if ld "${ld_args[@]}" -o "$deps_obj" "${extra_libs[@]}" 2>/dev/null; then
+    # Guard against double-append on incremental builds.
+    if ! grep -qF "__deps_merged.o" "$filelist_path"; then
+      echo "$deps_obj" >> "$filelist_path"
+    fi
+  else
+    rm -f "$deps_obj"
+  fi
+fi
+
+if (( ${#extra_libs[@]} > 0 )); then
+  if /usr/bin/libtool "$@" "${extra_libs[@]}" 2>/dev/null; then
+    exit 0
+  fi
+fi
 
 if /usr/bin/libtool "$@" 2>/dev/null; then
   exit 0

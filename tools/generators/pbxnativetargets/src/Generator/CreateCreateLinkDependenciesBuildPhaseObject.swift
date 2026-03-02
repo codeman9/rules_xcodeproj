@@ -16,11 +16,13 @@ extension Generator {
         /// target.
         func callAsFunction(
             subIdentifier: Identifiers.Targets.SubIdentifier,
-            hasCompileStub: Bool
+            hasCompileStub: Bool,
+            isStaticLibrary: Bool
         ) -> Object {
             return callable(
                 /*subIdentifier:*/ subIdentifier,
-                /*hasCompileStub:*/ hasCompileStub
+                /*hasCompileStub:*/ hasCompileStub,
+                /*isStaticLibrary:*/ isStaticLibrary
             )
         }
     }
@@ -31,12 +33,14 @@ extension Generator {
 extension Generator.CreateCreateLinkDependenciesBuildPhaseObject {
     typealias Callable = (
         _ subIdentifier: Identifiers.Targets.SubIdentifier,
-        _ hasCompileStub: Bool
+        _ hasCompileStub: Bool,
+        _ isStaticLibrary: Bool
     ) -> Object
 
     static func defaultCallable(
         subIdentifier: Identifiers.Targets.SubIdentifier,
-        hasCompileStub: Bool
+        hasCompileStub: Bool,
+        isStaticLibrary: Bool
     ) -> Object {
         let action = #"""
 perl -pe 's/\$(\()?([a-zA-Z_]\w*)(?(1)\))/$ENV{$2}/g' \
@@ -55,6 +59,31 @@ fi
 """#,
         ]
 
+        if isStaticLibrary {
+            // Write a .deps sidecar file for the libtool wrapper. The libtool
+            // wrapper merges these dependency archives into the output .a after
+            // creating it, so the JIT linker finds all symbols.
+            shellScriptComponents.append(#"""
+if [[ "${RULES_XCODEPROJ_ENABLE_PREVIEWS:-}" == "YES" && \
+      -s "$SCRIPT_OUTPUT_FILE_0" ]]; then
+  deps_file="$TARGET_BUILD_DIR/$EXECUTABLE_PATH.deps"
+  dep_libs=()
+  while IFS= read -r line; do
+    [[ -n "$line" && "$line" != -* && -f "${line//\'/}" ]] && \
+      dep_libs+=("${line//\'/}")
+  done < "$SCRIPT_OUTPUT_FILE_0"
+  if (( ${#dep_libs[@]} > 0 )); then
+    printf '%s\n' "${dep_libs[@]}" > "$deps_file"
+  else
+    rm -f "$deps_file"
+  fi
+else
+  rm -f "$TARGET_BUILD_DIR/$EXECUTABLE_PATH.deps"
+fi
+
+"""#)
+        }
+
         var outputPaths = [#"""
 				"$(DERIVED_FILE_DIR)/link.params",
 """#]
@@ -68,10 +97,15 @@ touch "$SCRIPT_OUTPUT_FILE_1"
 """#)
         }
 
-        // The tabs for indenting are intentional
+        // The tabs for indenting are intentional.
+        // Static library targets need alwaysOutOfDate so the .deps sidecar
+        // is recreated every build (copy_outputs.sh re-copies the Bazel .a).
+        let alwaysOutOfDate = isStaticLibrary
+            ? "\n\t\t\talwaysOutOfDate = 1;"
+            : ""
         let content = #"""
 {
-			isa = PBXShellScriptBuildPhase;
+			isa = PBXShellScriptBuildPhase;\#(alwaysOutOfDate)
 			buildActionMask = 2147483647;
 			files = (
 			);

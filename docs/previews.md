@@ -54,13 +54,25 @@ executor, a `debug.dylib` containing compiled code, and a `__preview.dylib`
 for interposition. The `clang.ld` wrapper passes through for these link tasks
 so real Mach-O files are created.
 
+For **static library targets**, the XOJIT preview system constructs pseudodylibs
+from the individual `.o` files listed in the libtool filelist — it ignores
+`OTHER_LDFLAGS` and `LINK_PARAMS_FILE` because static libraries have no linker
+(Ld) task. To make transitive dependencies available to the JIT linker, the
+"Create Link Dependencies" build phase extracts dependency `.a` paths from the
+resolved `link.params` and writes them to a `.deps` sidecar file. The `libtool`
+wrapper reads this file, uses `ld -r -all_load` to create a single
+`__deps_merged.o` from all dependency archives, and appends it to the libtool
+filelist. This way the pseudodylib includes the dependency symbols as a separate
+object file — avoiding duplicate symbol conflicts that would occur if the
+symbols were merged into the target's own `.o` files.
+
 ## What Works
 
 | Target Type | Preview Support | Notes |
 |---|---|---|
 | Dynamic framework (`ios_dynamic_framework`) | Full | Bazel-built `.framework` used directly |
 | App (`ios_application`) | Full | Uses debug dylib architecture |
-| Static library (`swift_library`) | Full | `clang` and `libtool` wrappers enable static lib analysis |
+| Static library (`swift_library`) | Full | `libtool` wrapper merges transitive deps into `.a` for JIT linking |
 | ObjC framework | Full | Works through dynamic framework embedding |
 | SPM dependency (via `rules_swift_package_manager`) | Full | e.g., `swift-collections` |
 | Framework with transitive xcframework dep | Full | e.g., Showcase → PreviewKit → FirebaseAuth |
@@ -137,7 +149,7 @@ The following files were modified or added to support previews:
 |---|---|
 | `xcodeproj/internal/bazel_integration_files/clang.ld` | **New.** Linker wrapper named for Xcode's clang-driver parser. Passes through for preview thunks, debug dylibs, and `-###` queries; writes dummy `dependency_info` for regular builds. |
 | `xcodeproj/internal/bazel_integration_files/clang` | **New.** Compiler wrapper invoked when the preview system derives a compiler path from `clang.ld`. Passes through to real clang for static library analysis. |
-| `xcodeproj/internal/bazel_integration_files/libtool` | **Modified.** Now passes through to real libtool so `.a` archives are created from swiftc_stub's `.o` files (needed for static library preview analysis). |
+| `xcodeproj/internal/bazel_integration_files/libtool` | **Modified.** Passes through to real libtool for `.a` creation. Reads `.deps` sidecar file and creates a `__deps_merged.o` from dependency archives via `ld -r`, appending it to the libtool filelist so the XOJIT pseudodylib includes transitive symbols. Handles `-V` version queries. |
 | `tools/params_processors/link_params_processor.py` | **Modified.** `_normalize_path()` replaces `bazel-out/` with `$(BAZEL_OUT)/` and substitutes Bazel placeholder paths. Quote handling added for paths containing `$(...)`. |
 | `tools/generators/pbxproj_prefix/src/Generator/PBXProjectBuildSettings.swift` | **Modified.** Conditionally sets `ENABLE_DEBUG_DYLIB`, `ENABLE_XOJIT_PREVIEWS`, `SWIFT_USE_INTEGRATED_DRIVER`, and `RULES_XCODEPROJ_ENABLE_PREVIEWS` based on `enablePreviews`. Renames `LD`/`LDPLUSPLUS` to `clang.ld`. |
 | `tools/generators/pbxproj_prefix/test/PBXProjectBuildSettingsTests.swift` | **Modified.** Updated expected values; added `testPreviewsDisabled()` test case. |
@@ -147,7 +159,8 @@ The following files were modified or added to support previews:
 | `xcodeproj/internal/templates/installer.sh` | **Modified.** Creates `swift-frontend` symlink in integration directory. Marks `clang` and `clang.ld` as executable. |
 | `xcodeproj/internal/templates/xcodeproj.bazelrc` | **Modified.** Preview Swift flags and rpath are conditionally inserted via `%preview_flags%` template variable (only when `enable_previews = True`). |
 | `tools/generators/pbxnativetargets/src/Generator/CalculateSharedBuildSettings.swift` | **Modified.** Changed `CODE_SIGNING_ALLOWED` for frameworks from `$(ENABLE_PREVIEWS)` to `$(RULES_XCODEPROJ_ENABLE_PREVIEWS)`. |
-| `tools/generators/pbxnativetargets/src/Generator/CreateCreateLinkDependenciesBuildPhaseObject.swift` | **Modified.** Gates link dependencies build phase on `RULES_XCODEPROJ_ENABLE_PREVIEWS`; creates empty `link.params` when disabled. |
+| `tools/generators/pbxnativetargets/src/Generator/CreateCreateLinkDependenciesBuildPhaseObject.swift` | **Modified.** Gates link dependencies build phase on `RULES_XCODEPROJ_ENABLE_PREVIEWS`; creates empty `link.params` when disabled. For static library targets, also creates a `.deps` sidecar file with resolved dependency `.a` paths for the `libtool` wrapper. |
+| `xcodeproj/internal/processed_targets/library_targets.bzl` | **Modified.** Added `_create_library_link_params()` to generate link params for static library targets' transitive dependencies, enabling the `bl` output group to fetch dependency `.a` files. |
 | `xcodeproj/internal/templates/generate_bazel_dependencies.sh` | **Modified.** Gates output group prefixes (`bc,bp,bl` vs `bp`) on `RULES_XCODEPROJ_ENABLE_PREVIEWS`. |
 | `xcodeproj/xcodeproj.bzl` | **Modified.** Added `enable_previews` parameter (default `False`). |
 | `xcodeproj/internal/xcodeproj_runner.bzl` | **Modified.** Plumbs `enable_previews` to bazelrc template and BUILD file template. |
