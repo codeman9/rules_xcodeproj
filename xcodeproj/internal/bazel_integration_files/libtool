@@ -48,9 +48,6 @@ done
 extra_libs=()
 if [[ -n "$output_path" ]]; then
   deps_file="${output_path}.deps"
-  if [[ ! -f "$deps_file" && -n "${RULES_XCODEPROJ_ENABLE_PREVIEWS:-}" ]]; then
-    echo "note: libtool wrapper: no .deps file at $deps_file" >&2
-  fi
   if [[ -f "$deps_file" ]]; then
     total_lines=0
     skipped_lines=0
