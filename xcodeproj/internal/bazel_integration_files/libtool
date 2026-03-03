@@ -48,10 +48,23 @@ done
 extra_libs=()
 if [[ -n "$output_path" ]]; then
   deps_file="${output_path}.deps"
+  if [[ ! -f "$deps_file" && -n "${RULES_XCODEPROJ_ENABLE_PREVIEWS:-}" ]]; then
+    echo "note: libtool wrapper: no .deps file at $deps_file" >&2
+  fi
   if [[ -f "$deps_file" ]]; then
+    total_lines=0
+    skipped_lines=0
     while IFS= read -r line; do
-      [[ -n "$line" && -f "$line" ]] && extra_libs+=("$line")
+      total_lines=$((total_lines + 1))
+      if [[ -n "$line" && -f "$line" ]]; then
+        extra_libs+=("$line")
+      elif [[ -n "$line" ]]; then
+        skipped_lines=$((skipped_lines + 1))
+      fi
     done < "$deps_file"
+    if (( skipped_lines > 0 )); then
+      echo "warning: libtool wrapper: skipped $skipped_lines/$total_lines deps (files not found)" >&2
+    fi
   fi
 fi
 
@@ -84,14 +97,21 @@ if (( ${#extra_libs[@]} > 0 )) && [[ -n "$filelist_path" && -f "$filelist_path" 
   sdk_ver="${SDK_VERSION:-${min_ver}}"
   ld_args+=(-platform_version "$platform" "$min_ver" "$sdk_ver")
 
-  if ld "${ld_args[@]}" -o "$deps_obj" "${extra_libs[@]}" 2>/dev/null; then
+  ld_err="$(mktemp)"
+  if ld "${ld_args[@]}" -o "$deps_obj" "${extra_libs[@]}" 2>"$ld_err"; then
     # Guard against double-append on incremental builds.
     if ! grep -qF "__deps_merged.o" "$filelist_path"; then
       echo "$deps_obj" >> "$filelist_path"
     fi
   else
+    echo "warning: libtool wrapper: ld -r failed to create __deps_merged.o" >&2
+    echo "warning: ld args: ${ld_args[*]}" >&2
+    echo "warning: extra_libs count: ${#extra_libs[@]}" >&2
+    echo "warning: ld stderr:" >&2
+    cat "$ld_err" >&2
     rm -f "$deps_obj"
   fi
+  rm -f "$ld_err"
 fi
 
 if (( ${#extra_libs[@]} > 0 )); then
