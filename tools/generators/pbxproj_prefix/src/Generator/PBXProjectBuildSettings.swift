@@ -86,11 +86,6 @@ extension Generator {
                 key: "CONFIGURATION_BUILD_DIR",
                 value: #""$(BUILD_DIR)/$(BAZEL_PACKAGE_BIN_DIR)""#
             ),
-            // Disable explicit modules — Bazel handles real compilation,
-            // and the preview thunk compiler may use different target flags
-            // (e.g., SDK version vs deployment target) causing pcm hash
-            // mismatches.
-            .init(key: "CLANG_ENABLE_EXPLICIT_MODULES", value: "NO"),
             .init(key: "COPY_PHASE_STRIP", value: "NO"),
             .init(key: "CXX", value: #""$(BAZEL_INTEGRATION_DIR)/clang.sh""#),
             .init(key: "DEBUG_INFORMATION_FORMAT", value: "dwarf"),
@@ -170,7 +165,6 @@ extension Generator {
             ),
             .init(key: "SRCROOT", value: workspace.pbxProjEscaped),
             .init(key: "SUPPORTS_MACCATALYST", value: "NO"),
-            .init(key: "SWIFT_ENABLE_EXPLICIT_MODULES", value: "NO"),
             .init(
                 key: "SWIFT_EXEC",
                 value: #""$(BAZEL_INTEGRATION_DIR)/swiftc""#
