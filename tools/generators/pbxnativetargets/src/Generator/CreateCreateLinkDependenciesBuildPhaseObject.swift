@@ -68,14 +68,32 @@ if [[ "${RULES_XCODEPROJ_ENABLE_PREVIEWS:-}" == "YES" && \
       -s "$SCRIPT_OUTPUT_FILE_0" ]]; then
   deps_file="$TARGET_BUILD_DIR/$EXECUTABLE_PATH.deps"
   dep_libs=()
+  total_candidates=0
+  skipped_candidates=0
   while IFS= read -r line; do
-    [[ -n "$line" && "$line" != -* && -f "${line//\'/}" ]] && \
-      dep_libs+=("${line//\'/}")
+    if [[ -n "$line" && "$line" != -* ]]; then
+      total_candidates=$((total_candidates + 1))
+      clean="${line//\'/}"
+      if [[ -f "$clean" ]]; then
+        dep_libs+=("$clean")
+      else
+        skipped_candidates=$((skipped_candidates + 1))
+        if (( skipped_candidates <= 3 )); then
+          echo "note: .deps: file not found: $clean" >&2
+        fi
+      fi
+    fi
   done < "$SCRIPT_OUTPUT_FILE_0"
+  if (( skipped_candidates > 3 )); then
+    echo "note: .deps: ... and $((skipped_candidates - 3)) more not found (of $total_candidates total)" >&2
+  fi
   if (( ${#dep_libs[@]} > 0 )); then
     printf '%s\n' "${dep_libs[@]}" > "$deps_file"
   else
     rm -f "$deps_file"
+    if (( total_candidates > 0 )); then
+      echo "warning: .deps: no dependency archives found ($total_candidates candidates, $skipped_candidates missing)" >&2
+    fi
   fi
 else
   rm -f "$TARGET_BUILD_DIR/$EXECUTABLE_PATH.deps"
